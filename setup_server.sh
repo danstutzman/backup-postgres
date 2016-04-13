@@ -1,10 +1,12 @@
 #!/bin/bash -ex
 
-#gcloud compute instances create postgres-master \
-#  --machine-type g1-small \
-#  --image ubuntu-14-04
 
 AWS_ACCESS_KEY_ID=$(cat aws_creds/backup-postgres-appendonly.accesskey.json | python -c 'import json,sys; obj=json.load(sys.stdin); print obj["AccessKey"]["AccessKeyId"]')
+if [ `gcloud compute instances list postgres-master | wc -l` != "2" ]; then
+  gcloud compute instances create postgres-master \
+    --machine-type g1-small \
+    --image ubuntu-14-04
+fi
 if [ "$AWS_ACCESS_KEY_ID" == "" ]; then
   echo 1>&2 "Empty AWS_ACCESS_KEY_ID"
   exit 1
