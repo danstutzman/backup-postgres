@@ -40,6 +40,9 @@ if [ ! -e /etc/postgresql/9.3/main/postgresql.conf.bak ]; then
 fi
 sudo cp /etc/postgresql/9.3/main/postgresql.conf.bak /etc/postgresql/9.3/main/postgresql.conf
 sudo perl -pi -e 's/#?wal_level = .*?#/wal_level = archive #/' /etc/postgresql/9.3/main/postgresql.conf
+sudo perl -pi -e 's/#?archive_mode = .*?#/archive_mode = yes #/' /etc/postgresql/9.3/main/postgresql.conf
+sudo perl -pi -e "s{#?archive_command = .*?#}{archive_command = 'envdir /etc/wal-e.d/env /usr/local/bin/wal-e wal-push %p' #}" /etc/postgresql/9.3/main/postgresql.conf
+sudo perl -pi -e 's/#?archive_timeout = .*?#/archive_timeout = 60 #/' /etc/postgresql/9.3/main/postgresql.conf
 diff /etc/postgresql/9.3/main/postgresql.conf.bak /etc/postgresql/9.3/main/postgresql.conf || true # don't exit because status != 0
 sudo service postgresql restart
 
