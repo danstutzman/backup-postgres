@@ -47,6 +47,10 @@ echo s3://$BUCKET_NAME        | sudo tee /etc/wal-e.d/env/WALE_S3_PREFIX
 echo us-east-1                | sudo tee /etc/wal-e.d/env/AWS_REGION
 sudo chown -R root:postgres /etc/wal-e.d
 
+sudo service postgresql stop
 sudo rm -rf /var/lib/postgresql/9.3/main
 sudo sudo -u postgres envdir /etc/wal-e.d/env /usr/local/bin/wal-e backup-fetch /var/lib/postgresql/9.3/main LATEST
+echo "restore_command = '/usr/bin/envdir /etc/wal-e.d/env /usr/local/bin/wal-e wal-fetch \"%f\" \"%p\"'" | sudo tee /var/lib/postgresql/9.3/main/recovery.conf
+sudo chown postgres:postgres /var/lib/postgresql/9.3/main/recovery.conf
+sudo service postgresql start
 EOF
