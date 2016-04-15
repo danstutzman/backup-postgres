@@ -2,9 +2,11 @@
 
 IAM_USERNAME=backup-postgres-appendonly
 BUCKET_NAME=backup-postgres-danstutzman
+INSTANCE_NAME=pg
+POSTGRES_VERSION=9.5
 
-if [ `gcloud compute instances list postgres-master | wc -l` != "2" ]; then
-  gcloud compute instances create postgres-master \
+if [ `gcloud compute instances list $INSTANCE_NAME | wc -l` != "2" ]; then
+  gcloud compute instances create $INSTANCE_NAME \
     --machine-type g1-small \
     --image ubuntu-14-04
 fi
@@ -21,10 +23,17 @@ if [ "$AWS_SECRET_ACCESS_KEY" == "" ]; then
   exit 1
 fi
 
-gcloud compute ssh postgres-master <<EOF
+gcloud compute ssh $INSTANCE_NAME <<EOF
 set -ex
+
 sudo apt-get update
-sudo apt-get install -y postgresql
+
+echo "deb http://apt.postgresql.org/pub/repos/apt/ \$(lsb_release -cs)-pgdg main" \
+    | sudo tee /etc/apt/sources.list.d/pgdg.list
+sudo apt-get install -y ca-certificates
+curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sudo apt-get update
+sudo apt-get install -y postgresql-$POSTGRES_VERSION
 
 sudo apt-get install -y daemontools python-pip python-dev git lzop pv
 if [ ! -e wal-e ]; then
@@ -34,16 +43,16 @@ sudo pip install wal-e
 sudo pip install requests==2.8.1 # for some reason it's not installed with wal-e
 sudo pip install six==1.9.0 # for some reason it's not installed with wal-e
 
-if [ ! -e /etc/postgresql/9.3/main/postgresql.conf.bak ]; then
-  sudo cp /etc/postgresql/9.3/main/postgresql.conf \
-    /etc/postgresql/9.3/main/postgresql.conf.bak
+if [ ! -e /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf.bak ]; then
+  sudo cp /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf \
+    /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf.bak
 fi
-sudo cp /etc/postgresql/9.3/main/postgresql.conf.bak /etc/postgresql/9.3/main/postgresql.conf
-sudo perl -pi -e 's/#?wal_level = .*?#/wal_level = archive #/' /etc/postgresql/9.3/main/postgresql.conf
-sudo perl -pi -e 's/#?archive_mode = .*?#/archive_mode = yes #/' /etc/postgresql/9.3/main/postgresql.conf
-sudo perl -pi -e "s{#?archive_command = .*?#}{archive_command = 'envdir /etc/wal-e.d/env /usr/local/bin/wal-e wal-push %p' #}" /etc/postgresql/9.3/main/postgresql.conf
-sudo perl -pi -e 's/#?archive_timeout = .*?#/archive_timeout = 60 #/' /etc/postgresql/9.3/main/postgresql.conf
-diff /etc/postgresql/9.3/main/postgresql.conf.bak /etc/postgresql/9.3/main/postgresql.conf || true # don't exit because status != 0
+sudo cp /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf.bak /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf
+sudo perl -pi -e 's/#?wal_level = .*?#/wal_level = archive #/' /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf
+sudo perl -pi -e 's/#?archive_mode = .*?#/archive_mode = yes #/' /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf
+sudo perl -pi -e "s{#?archive_command = .*?#}{archive_command = 'envdir /etc/wal-e.d/env /usr/local/bin/wal-e wal-push %p' #}" /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf
+sudo perl -pi -e 's/#?archive_timeout = .*?#/archive_timeout = 60 #/' /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf
+diff /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf.bak /etc/postgresql/$POSTGRES_VERSION/main/postgresql.conf || true # don't exit because status != 0
 sudo service postgresql restart
 
 sudo mkdir -p /etc/wal-e.d/env
@@ -53,5 +62,5 @@ echo s3://$BUCKET_NAME        | sudo tee /etc/wal-e.d/env/WALE_S3_PREFIX
 echo us-east-1                | sudo tee /etc/wal-e.d/env/AWS_REGION
 sudo chown -R root:postgres /etc/wal-e.d
 
-sudo sudo -u postgres envdir /etc/wal-e.d/env /usr/local/bin/wal-e backup-push /var/lib/postgresql/9.3/main
+sudo sudo -u postgres envdir /etc/wal-e.d/env /usr/local/bin/wal-e backup-push /var/lib/postgresql/$POSTGRES_VERSION/main
 EOF
