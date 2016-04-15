@@ -33,7 +33,7 @@ echo "deb http://apt.postgresql.org/pub/repos/apt/ \$(lsb_release -cs)-pgdg main
 sudo apt-get install -y ca-certificates
 curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 sudo apt-get update
-sudo apt-get install -y postgresql-$POSTGRES_VERSION
+sudo apt-get install -y postgresql-$POSTGRES_VERSION barman
 
 sudo apt-get install -y daemontools python-pip python-dev git lzop pv
 if [ ! -e wal-e ]; then
